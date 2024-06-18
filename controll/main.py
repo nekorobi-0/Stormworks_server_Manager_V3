@@ -36,6 +36,13 @@ MISSIONS = [
     "default_tutorial",
     "default_mission_zones_underwater",
 ]
+PROFILE_TEMPLATES = {
+    "minimal":{"name":"new_profile","description":"description","xml_setting":"default_minimal.xml"},
+    "default":{"name":"new_profile","description":"description","xml_setting":"default.xml"},
+    "full":{"name":"new_profile","description":"description","xml_setting":"default_full.xml"},
+}
+
+AVAILABLE_DLCS = ["dlc_arid","dlc_weapons","dlc_space"]
 
 user_info_chache = {}
 with open("key.txt") as f:
@@ -87,7 +94,7 @@ def issessionactive(page):#check session
     sesssion_id = page.client_storage.get("session_id")
     name = page.client_storage.get("name")
     if sesssion_id is None or name is None:
-        return
+        return False
     for session in data["users"][name]["sessions"]:
         if session[1] < datetime.datetime.now().timestamp() - 60*60*24*30:
             data["users"][name]["sessions"].remove(session)
@@ -131,7 +138,7 @@ class login_view(ft.View):
             ft.Column(
                 controls=[
                     ft.Text("Login",size=50),
-                    (con_name:=ft.TextField(label="Username")),
+                    (con_name:=ft.TextField(label="Username",on_submit=lambda e:con_password.focus())),
                     (con_password:=ft.TextField(label="Password",password=True)),
                     (login_btn:=ft.ElevatedButton("Login")),
                     ft.Row([ft.Text("Don't have an account?"),ft.TextButton("Register",on_click=register_func)],
@@ -142,6 +149,9 @@ class login_view(ft.View):
             )]
         )
         def auth_func(e):#generate session
+            if con_name.value not in data["users"]:
+                open_dialog("Wrong password or username",self.page)
+                return
             name = con_name.value
             solt = data["users"][name]["password_solt"]
             password = con_password.value
@@ -154,9 +164,9 @@ class login_view(ft.View):
                 self.page.client_storage.set("session_id",session_id)
                 self.page.client_storage.set("name",name)
                 update_data()
-                print("success")
-            print(name,password)
-            e.page.go("/")
+                e.page.go("/")
+            else:
+                open_dialog("Wrong password or username",self.page)
         login_btn.on_click = auth_func
         self.controls.append(container)
 
@@ -169,8 +179,8 @@ class register_view(ft.View):
             ft.Column(
                 controls=[
                     ft.Text("Register",size=50),
-                    (con_name:=ft.TextField(label="Username")),
-                    (con_password:=ft.TextField(label="Password",password=True)),
+                    (con_name:=ft.TextField(label="Username",on_submit=lambda e:con_password.focus())),
+                    (con_password:=ft.TextField(label="Password",password=True,on_submit=lambda e:con_password2.focus())),
                     (con_password2:=ft.TextField(label="Confirm Password",password=True)),
                     (register_btn:=ft.ElevatedButton("Register")),
                     ft.Row([ft.Text("Have an account?"),ft.TextButton("Login",on_click=lambda e:e.page.go("/login"))],
@@ -208,12 +218,13 @@ class register_view(ft.View):
 class console_view(ft.View):
     def __init__(self):
         super().__init__(route="/console")
+        self.scroll = ft.ScrollMode.AUTO
         self.appbar = header.header()
         def selector_set(e):
             user = issessionactive(self.page)
             if user is False:
                 self.page.go("/login")
-            elif user["profiles"] == []:
+            elif "profiles" not in user or len(user["profiles"]) == 0:
                 open_dialog("No profiles found",self.page)
             else:
                 select.options = [ft.dropdown.Option(i["name"]) for i in user["profiles"]]
@@ -225,8 +236,14 @@ class console_view(ft.View):
                     ft.Text("Console",size=50),
                     ft.Row([select:=ft.Dropdown(),
                             ft.IconButton(ft.icons.AUTORENEW,on_click=selector_set,icon_color=ft.colors.ORANGE_ACCENT),#refresh
-                            add_btn :=ft.IconButton(ft.icons.ADD,icon_color=ft.colors.GREEN_ACCENT),
-                            save_btn:=ft.IconButton(ft.icons.SAVE,icon_color=ft.colors.BLUE_ACCENT),
+                            add_btn :=ft.PopupMenuButton(items=[
+                                ft.PopupMenuItem(content=ft.Text("Select Template")),
+                                ft.PopupMenuItem(content=ft.Column(
+                                    controls=[
+                                        ft.Dropdown(label="Profile Temlate"),
+                                    ]
+                                ))
+                            ],icon=ft.icons.ADD,icon_color=ft.colors.GREEN_ACCENT),
                             del_btn :=ft.IconButton(ft.icons.DELETE,icon_color=ft.colors.RED_ACCENT),
                         ],alignment=ft.MainAxisAlignment.CENTER),
                     ft.Divider(thickness=5),
@@ -234,6 +251,25 @@ class console_view(ft.View):
                 ],col=8),
             ],
         ))
+        def remove_profile(e):
+            user = issessionactive(self.page)
+            if user is False:
+                self.page.go("/login")
+            elif "profiles" not in user or len(user["profiles"]) == 0:
+                open_dialog("No profiles found",self.page)
+            else:
+                name = select.value
+                user["profiles"].remove([i for i in user["profiles"] if i["name"] == name][0])
+                update_data()
+                self.page.go("/console")
+        def create_profile(e):
+            user = issessionactive(self.page)
+            if user is False:
+                self.page.go("/login")
+            else:
+                template = ""
+        add_btn.on_click = create_profile
+        del_btn.on_click = remove_profile
         class profile_console(ft.Column):
             def __init__(self,prof):
                 self.prof = prof
@@ -258,7 +294,8 @@ class console_view(ft.View):
                     SaveXmlSetting(self.prof["path"],self.xml)
                     self.update_func()
                 def remove_mission(mission):
-                    self.xml.find("playlists").remove(self.xml.find("playlists").find("path[@path='"+mission+"']"))
+                    print(mission)
+                    self.xml.find("playlists").remove(self.xml.find("playlists").find("path[@path='rom/data/missions/"+mission+"']"))
                     SaveXmlSetting(self.prof["path"],self.xml)
                     self.update_func()
                 def UserListTile(user,func:callable):
@@ -286,7 +323,10 @@ class console_view(ft.View):
                     if val in self.missions:
                         open_dialog("Already added",self.page)
                         return
-                    self.xml.find("playlists").append(ET.Element("path",path=val))
+                    if val not in MISSIONS:
+                        open_dialog(f"{val} is not found",self.page)
+                        return
+                    self.xml.find("playlists").append(ET.Element("path",path=f"rom/data/missions/{val}"))
                     SaveXmlSetting(self.prof["path"],self.xml)
                     self.update_func()
                 class AddUser(ft.PopupMenuItem):
@@ -313,15 +353,19 @@ class console_view(ft.View):
                                 open_dialog("Invalid mission",self.page)
                         self.func(self.tex.value)
                         self.tex.value = ""
-                        self.tex.update()
                 def MissionListTile(mission,func:callable):
                     mission = mission.split("/")[-1]
                     return ft.ListTile(
                         leading=ft.Icon(ft.icons.MAP,size=30),
                         title=ft.Text(mission),
-                        height=20,
+                        height=40,
                         trailing=ft.IconButton(ft.icons.DELETE,icon_color=ft.colors.RED_ACCENT,on_click=lambda e:func(mission))
                     )
+                def dlc_select(e,dlc_str):
+                    self.xml.find(".").attrib[dlc_str] = str(bool(e.control.selected)).lower()
+                    SaveXmlSetting(self.prof["path"],self.xml)
+                    e.control.update()
+                dlcs = [self.xml.find(".").attrib[i]=="true" for i in AVAILABLE_DLCS]
                 controls=[
                     ft.ResponsiveRow([
                         ft.Column(col=2),
@@ -339,19 +383,29 @@ class console_view(ft.View):
                                 self.xml.find(".").attrib.__setitem__("password",e.control.value),
                                 SaveXmlSetting(self.prof["path"],self.xml)
                             )),
+                            ft.Row(
+                                [
+                                    ft.Chip(ft.Text("Arid DLC"),bgcolor=ft.colors.AMBER_300,autofocus=True,selected=dlcs[0],
+                                            selected_color=ft.colors.AMBER,on_select=lambda e:dlc_select(e,AVAILABLE_DLCS[0])),
+                                    ft.Chip(ft.Text("Weapon DLC"),bgcolor=ft.colors.GREEN_300,autofocus=True,selected=dlcs[1],
+                                            selected_color=ft.colors.GREEN,on_select=lambda e:dlc_select(e,AVAILABLE_DLCS[1])),
+                                    ft.Chip(ft.Text("Space DLC"),bgcolor=ft.colors.BLUE_300,autofocus=True,selected=dlcs[2],
+                                            selected_color=ft.colors.BLUE,on_select=lambda e:dlc_select(e,AVAILABLE_DLCS[2])),
+                                ]
+                            ),
                             ft.ResponsiveRow([
                                 ft.Column([ft.Row([ft.Text("Admins"),ft.PopupMenuButton(items=[
                                     ft.PopupMenuItem(text="Enter steam id or userpage url               "),
                                     val := AddUser("Admin",AddAdmin),
                                     ],icon=ft.icons.ADD,icon_color=ft.colors.GREEN_ACCENT)]),]+[
                                     UserListTile(admin,remove_admin)
-                                for admin in self.admins],scroll=ft.ScrollMode.ALWAYS,height=200,col=6,spacing=0),
+                                for admin in self.admins],scroll=ft.ScrollMode.ALWAYS,height=300,col=6,spacing=0),
                                 ft.Column([ft.Row([ft.Text("Authorized"),ft.PopupMenuButton(items=[
                                     ft.PopupMenuItem(text="Enter steam id or userpage url               "),
                                     val := AddUser("Authorized",AddAuth),
                                     ],icon=ft.icons.ADD,icon_color=ft.colors.GREEN_ACCENT)]),]+[
                                     UserListTile(admin,remove_auth)
-                                for admin in self.authed],scroll=ft.ScrollMode.ALWAYS,height=200,col=6,spacing=0),
+                                for admin in self.authed],scroll=ft.ScrollMode.ALWAYS,height=300,col=6,spacing=0),
                             ]),
                             ft.Column([
                                 ft.Row([ft.Text("Missions"),ft.PopupMenuButton(items=[
@@ -361,7 +415,7 @@ class console_view(ft.View):
                                     ft.IconButton(ft.icons.ARTICLE)],spacing=0),
                             ]+[
                                 MissionListTile(mission,remove_mission) for mission in self.missions
-                            ],scroll=ft.ScrollMode.ALWAYS,height=200),
+                            ],scroll=ft.ScrollMode.ALWAYS,height=400),
                         ],col=8),
                         ft.Column(col=2),
                     ])
@@ -388,6 +442,31 @@ class console_view(ft.View):
             container.controls.append(profile_console(prof))
             container.update()
         select.on_change = open_profile
+
+class profile_view(ft.View):
+    def __init__(self) -> None:
+        super().__init__(route="/account")
+        self.appbar = header.header()
+        self.controls = [
+            ft.ResponsiveRow([
+                ft.Row(col=3),
+                ft.Row([
+                    ft.Column([
+                        ft.Text("Profile",size=50),
+                        c:=ft.Column(),
+                        ft.IconButton(ft.icons.EDIT,icon_color=ft.colors.GREEN_ACCENT,on_click=lambda e:(
+                            c.controls.clear(),c.controls.append(open_profile(e.page)),c.update())),
+                    ])
+                ],col=6)
+            ])
+        ]
+        def open_profile(page):
+            name = page.client_storage.get("name")
+            return ft.Column([
+                ft.Text("Profile Editor"),
+                ft.Text(f"Name: {name}"),
+            ])
+            
 
 class worker():
     def __init__(self,worker_addr:str,max_servers:int=5) -> None:
@@ -444,9 +523,11 @@ def main(page: ft.Page):
             page.views.append(register_view())
         elif route.match("/console"):
             page.views.append(console_view())
+        elif route.match("/account"):
+            page.views.append(profile_view())
         page.update()
     page.on_route_change = route_change
     page.go("/")
     page.update()
 
-ft.app(target=main,assets_dir="images")
+ft.app(target=main,assets_dir="images",port=8000,view=ft.WEB_BROWSER)
