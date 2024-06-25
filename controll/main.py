@@ -650,7 +650,7 @@ class ConsoleView(ft.View):
                                 self.prof.__setitem__("allow_others",e.control.selected),update_data()
                             )),
                             ft.Chip(label=ft.Text("Run server"),visible=self.is_available,on_click=lambda e:(
-                                tap := manager.run_server(manager.generate_server_dict(self.prof)),
+                                tap := manager.run_server(manager.generate_server_dict(user,self.prof)),
                                 open_dialog("Server started",page)if tap[0] else open_dialog("Failed to start server",page)
                             ))
                         ])
@@ -714,7 +714,7 @@ class ServerManager():
         profile_uuid = profile_dict["path"][:-4]
         return {
             "name":f"{user}/{profile_name}",
-            "xml_path":f"saves/{profile_uuid}.xml"
+            "xml_path":f"profiles/{profile_uuid}.xml"
         }
     def generate_internal_profile_name(self,user:str,profile_name:str):
         return f"{user}/{profile_name}"

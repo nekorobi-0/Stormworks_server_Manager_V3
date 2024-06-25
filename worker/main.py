@@ -27,19 +27,15 @@ def server_selecter():
             return servers_status.index(i),i*2+GAME_PORT_START
     else:
         return -1,0
-class Server_RUN(BaseModel):
-    name: str
-    xml: str
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 @app.post("/run")
-async def run(reqest: Server_RUN):
+async def run(name:str,xml:str):
     position,port = server_selecter()
     if position == -1:
         return fastapi.responses.JSONResponse(content={"error":"server full"},status_code=400)
-    xml = reqest.xml
     xml = re.sub("port=\"[0-9]+\"",f"port=\"{port}\"",xml)
     server_id = str(uuid.uuid4())
     with open(f"saves/{server_id}/server_config.xml","w") as f:
