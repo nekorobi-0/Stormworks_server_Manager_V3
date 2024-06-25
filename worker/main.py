@@ -56,7 +56,7 @@ async def run(data: run_request):
     servers[server_id]["position"] = position
     return fastapi.responses.JSONResponse(content={"server_id":server_id})
 
-@app.post("/stop/{server_id}")
+@app.post("/stop")
 async def stop(data: stop_request):
     server_id = data.server_id
     if server_id in servers:
