@@ -670,10 +670,13 @@ class worker():
             xml = f.read()
         name = server_dict["name"]
         send_dict = {
-            "name":name,
-            "xml":xml
+            "name":str(name),
+            "xml":str(xml)
         }
+        print(send_dict)
+        print(json.dumps(send_dict))
         res = requests.post(f"http://{self.worker_addr}/run",json=json.dumps(send_dict))
+        print(res.json())
         if res.status_code == 200:
             self.servers[res.json()["server_id"]] = {"xml_path":xml_path,"name":name}
             return True ,res.json()["server_id"]

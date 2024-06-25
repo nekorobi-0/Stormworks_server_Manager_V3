@@ -27,12 +27,19 @@ def server_selecter():
             return servers_status.index(i),i*2+GAME_PORT_START
     else:
         return -1,0
+
+class run_request(BaseModel):
+    name:str
+    xml:str
+class stop_request(BaseModel):
+    server_id:str
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
 
 @app.post("/run")
-async def run(name:str,xml:str):
+async def run(data: run_request):
+    xml = data.xml
     position,port = server_selecter()
     if position == -1:
         return fastapi.responses.JSONResponse(content={"error":"server full"},status_code=400)
@@ -49,7 +56,8 @@ async def run(name:str,xml:str):
     return fastapi.responses.JSONResponse(content={"server_id":server_id})
 
 @app.post("/stop/{server_id}")
-async def stop(server_id: str):
+async def stop(data: stop_request):
+    server_id = data.server_id
     if server_id in servers:
         servers_status[servers[server_id]["position"]] = "stopped"
         servers[server_id].kill()
