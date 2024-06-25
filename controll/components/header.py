@@ -3,7 +3,7 @@ def login_func(e):
     e.page.go("/login")
 def header(isLogin=False):
     return ft.AppBar(
-        leading=ft.IconButton(ft.icons.MENU,on_click=lambda e:e.page.go("/console")),
+        leading=ft.IconButton(ft.icons.MENU,on_click=lambda e:e.page.go("/editor")),
         leading_width=40,
         title=ft.Text("Easy Stormworks Server"),
         center_title=False,

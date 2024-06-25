@@ -70,7 +70,8 @@ async def info():
         "RAM":{
             "total": RAM_stats.total,
             "used": RAM_stats.used
-        }
+        },
+        "max_servers": MAX_SERVER_COUNT
     }
     return res_dict
 

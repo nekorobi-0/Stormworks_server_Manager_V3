@@ -10,6 +10,8 @@ import xml.etree.ElementTree as ET
 import requests
 import aiohttp
 import asyncio
+import uuid
+import os
 MISSIONS = [
     "default_paths",
     "default_ai_aircraft",
@@ -36,13 +38,63 @@ MISSIONS = [
     "default_tutorial",
     "default_mission_zones_underwater",
 ]
+
 PROFILE_TEMPLATES = {
     "minimal":{"name":"new_profile","description":"description","xml_setting":"default_minimal.xml"},
-    "default":{"name":"new_profile","description":"description","xml_setting":"default.xml"},
-    "full":{"name":"new_profile","description":"description","xml_setting":"default_full.xml"},
+    #"default":{"name":"new_profile","description":"description","xml_setting":"default.xml"},
+    #"full":{"name":"new_profile","description":"description","xml_setting":"default_full.xml"},
 }
 
 AVAILABLE_DLCS = ["dlc_arid","dlc_weapons","dlc_space"]
+
+AVAILABLE_SETTINGS = {
+    "base_island":          {"type": "str","convert": lambda x: f"data/tiles/{x}.xml","reverse": lambda x: x.replace("data/tiles/","")[:-4]},
+    "max_players":          {"type": "int",  "min": 1, "max": 32,"div":31},
+    "day_night_length":     {"type": "int",  "min": 0, "max": 600, "div": 600},
+    "sunrise":              {"type": "float","min": 0, "max": 1,"div":100},
+    "sunset":               {"type": "float","min": 0, "max": 1,"div":100},
+    "starting_currency":    {"type": "int",  "min": 0, "max": 1000000,"div":100},
+    "physics_timestep":     {"type": "int",  "min": 0, "max": 180, "div": 4},
+    "fish_spawn_rate":      {"type": "int",  "min": 0, "max": 3, "div": 4},
+    "infinite_money":       {"type": "bool"},
+    "infinite_resources":   {"type": "bool"},
+    "infinite_batteries":   {"type": "bool"},
+    "infinite_fuel":        {"type": "bool"},
+    "infinite_ammo":        {"type": "bool"},
+    "engine_overheating":   {"type": "bool"},
+    "unlock_components":    {"type": "bool"},
+    "unlock_all_islands":   {"type": "bool"},
+    "photo_mode":           {"type": "bool"},
+    "third_person":         {"type": "bool"},
+    "third_person_vehicle": {"type": "bool"},
+    "no_clip":              {"type": "bool"},
+    "map_teleport":         {"type": "bool"},
+    "fast_travel":          {"type": "bool"},
+    "teleport_vehicle":     {"type": "bool"},
+    "cleanup_vehicle":      {"type": "bool"},
+    "map_show_players":     {"type": "bool"},
+    "map_show_vehicles":    {"type": "bool"},
+    "show_3d_waypoints":    {"type": "bool"},
+    "show_name_plates":     {"type": "bool"},
+    "vehicle_damage":       {"type": "bool"},
+    "player_damage":        {"type": "bool"},
+    "npc_damage":           {"type": "bool"},
+    "respawning":           {"type": "bool"},
+    "aggressive_animals":   {"type": "bool"},
+    "sea_monsters":         {"type": "bool"},
+    "wildlife_enabled":     {"type": "bool"},
+    "lightning":            {"type": "bool"},
+    "despawn_on_leave":     {"type": "bool"},
+    "vehicle_spawn":        {"type": "bool"},
+    "override_weather":     {"type": "bool"},
+    "override_time":        {"type": "bool"},
+    "settings_menu":        {"type": "bool"},
+    "settings_menu_lock":   {"type": "bool"},
+}
+
+MAX_PROFILES_NUMBER = 3
+
+running_servers = {}
 
 user_info_chache = {}
 with open("key.txt") as f:
@@ -50,7 +102,7 @@ with open("key.txt") as f:
 steam_token = key
 with open("data.json") as f:
     data = json.load(f)
-async def get_user_info_async(session,user_id):
+async def get_user_info_async(session: aiohttp.ClientSession,user_id):
     req_url = f"http://api.steampowered.com/ISteamUser/GetPlayerSummaries/v0002/?key={steam_token}&steamids={user_id}"
     async with session.get(req_url) as res:
         res = await res.json()
@@ -211,47 +263,64 @@ class register_view(ft.View):
                 data["users"][name] = {"password_hash":hashed_password,"password_solt":solt}
                 data["users"][name]["sessions"] = []
                 data["users"][name]["profiles"] = []
+                data["users"][name]["max_profile"] = MAX_PROFILES_NUMBER
                 update_data()
                 self.page.go("/login")
         register_btn.on_click = regist
         self.controls.append(container)
-class console_view(ft.View):
-    def __init__(self):
-        super().__init__(route="/console")
+
+class editor_view(ft.View):
+    def selector_set(self,e,terget=None):
+        user = issessionactive(self.page)
+        if user is False:
+            self.page.go("/login")
+        elif "profiles" not in user or len(user["profiles"]) == 0:
+            open_dialog("No profiles found",self.page)
+        else:
+            self.select.options = [ft.dropdown.Option(i["name"]) for i in user["profiles"]]
+            if len(user["profiles"]) > 0:
+                if terget is not None:
+                    self.select.value = terget
+                else:
+                    self.select.value = user["profiles"][0]["name"]
+                self.select.on_change(None)
+            self.select.update()
+    def __init__(self,page):
+        super().__init__(route="/editor")
         self.scroll = ft.ScrollMode.AUTO
         self.appbar = header.header()
-        def selector_set(e):
-            user = issessionactive(self.page)
-            if user is False:
-                self.page.go("/login")
-            elif "profiles" not in user or len(user["profiles"]) == 0:
-                open_dialog("No profiles found",self.page)
-            else:
-                select.options = [ft.dropdown.Option(i["name"]) for i in user["profiles"]]
-                select.update()
+        self.page = page
         self.controls.append(ft.ResponsiveRow(
             controls=[
                 ft.Column(col=2),
                 ft.Column([
-                    ft.Text("Console",size=50),
+                    ft.Text("editor",size=50),
                     ft.Row([select:=ft.Dropdown(),
-                            ft.IconButton(ft.icons.AUTORENEW,on_click=selector_set,icon_color=ft.colors.ORANGE_ACCENT),#refresh
-                            add_btn :=ft.PopupMenuButton(items=[
+                            #ft.IconButton(ft.icons.AUTORENEW,on_click=self.selector_set,icon_color=ft.colors.ORANGE_ACCENT),#refresh
+                            ft.PopupMenuButton(items=[
                                 ft.PopupMenuItem(content=ft.Text("Select Template")),
                                 ft.PopupMenuItem(content=ft.Column(
                                     controls=[
-                                        ft.Dropdown(label="Profile Temlate"),
+                                        add_profile :=ft.Dropdown(label="Profile Temlate",options=[ft.dropdown.Option(i) for i in PROFILE_TEMPLATES]),
                                     ]
                                 ))
                             ],icon=ft.icons.ADD,icon_color=ft.colors.GREEN_ACCENT),
-                            del_btn :=ft.IconButton(ft.icons.DELETE,icon_color=ft.colors.RED_ACCENT),
+                            del_btn :=ft.PopupMenuButton(items=[
+                                ft.PopupMenuItem(content=ft.TextField(label="Enter Profile Name",on_submit=lambda e:remove_profile(e))),
+                            ],icon=ft.icons.DELETE,icon_color=ft.colors.RED_ACCENT),
+                            ft.IconButton(ft.icons.TERMINAL,icon_color=ft.colors.YELLOW,
+                                          on_click=lambda e:e.page.go(f"/console/{e.page.client_storage.get('name')}/{select.value}")),
                         ],alignment=ft.MainAxisAlignment.CENTER),
                     ft.Divider(thickness=5),
                     container:=ft.Column()
                 ],col=8),
             ],
         ))
+        self.select = select
         def remove_profile(e):
+            if e.control.value !=select.value:
+                open_dialog("Wrong profile name",self.page)
+                return
             user = issessionactive(self.page)
             if user is False:
                 self.page.go("/login")
@@ -259,24 +328,48 @@ class console_view(ft.View):
                 open_dialog("No profiles found",self.page)
             else:
                 name = select.value
-                user["profiles"].remove([i for i in user["profiles"] if i["name"] == name][0])
+                user_dict = [i for i in user["profiles"] if i["name"] == name][0]
+                dir = user_dict["path"]
+                os.remove(f"profiles/{dir}")
+                user["profiles"].remove(user_dict)
                 update_data()
-                self.page.go("/console")
+                self.page.go("/editor")
+                self.selector_set(None)
+                open_dialog("Profile deleted",self.page)
+                e.control.value = ""
+            
         def create_profile(e):
             user = issessionactive(self.page)
             if user is False:
                 self.page.go("/login")
             else:
-                template = ""
-        add_btn.on_click = create_profile
+                if user["max_profile"] <= len(user["profiles"]):
+                    open_dialog("Profile limit reached",self.page)
+                else:
+                    template = e.control.value
+                    file_name = uuid.uuid4()
+                    new_prof_dict = {"name":"NEW_PROFILE","path":f"{str(file_name)}.xml","description":"NEW_PROFILE"}
+                    while new_prof_dict["name"] in [i["name"] for i in user["profiles"]]:
+                        new_prof_dict["name"] += "_"
+                    with open(f"templates/{template}.xml","r") as f:
+                        template_text = f.read()
+                    with open(f"profiles/{str(file_name)}.xml","w") as f:
+                        f.write(template_text)
+                    user["profiles"].append(new_prof_dict)
+                    update_data()
+                    self.selector_set(None,terget=new_prof_dict["name"])
+                    open_dialog("Profile created",self.page)
+        add_profile.on_change = create_profile
         del_btn.on_click = remove_profile
-        class profile_console(ft.Column):
+        class profile_editor(ft.Column):
             def __init__(self,prof):
                 self.prof = prof
                 super().__init__(self.generate_controls())
                 self.scroll = ft.ScrollMode.AUTO
             def generate_controls(self):
                 self.xml:ET.ElementTree = LoadXmlSetting(self.prof["path"])
+                _xml = self.xml
+                _path = self.prof["path"]
                 self.admins = self.xml.find("admins").findall("id")
                 self.admins = [i.attrib["value"] for i in self.admins]
                 self.authed = self.xml.find("authorized").findall("id")
@@ -320,6 +413,7 @@ class console_view(ft.View):
                     SaveXmlSetting(self.prof["path"],self.xml)
                     self.update_func()
                 def AddMission(val):
+                    val = val.control.value
                     if val in self.missions:
                         open_dialog("Already added",self.page)
                         return
@@ -365,15 +459,52 @@ class console_view(ft.View):
                     self.xml.find(".").attrib[dlc_str] = str(bool(e.control.selected)).lower()
                     SaveXmlSetting(self.prof["path"],self.xml)
                     e.control.update()
+                class SettingListTile(ft.ListTile):
+                    def __init__(self,setting):
+                        self.setting = AVAILABLE_SETTINGS[setting]
+                        self.attr = setting
+                        self.value =  _xml.find(".").attrib[setting]
+                        self.type = self.setting["type"]
+                        if self.type == "bool":
+                            self.input = ft.Switch(value=bool(self.value=="true"),on_change=self.onchenge)
+                        elif self.type == "int" or self.type == "float":
+                            self.div = self.setting["div"] if "div" in self.setting else None
+                            self.input = ft.Slider(min=self.setting["min"],max=self.setting["max"],divisions=self.div,
+                                                   value=int(self.value)if self.type == "int" else float(self.value),on_change_end=self.onchenge,
+                                                   label="{value}")
+                        elif self.type == "str":
+                            self.input = ft.TextField(value=self.setting["reverse"](self.value),on_blur=self.onchenge)
+                        super().__init__(
+                            title=ft.Row([self.input,ft.Text(setting)])if self.type == "bool" else ft.Column([ft.Text(setting),self.input]),
+                            height=40 if self.type == "bool" else 100,
+                        )
+                    def onchenge(self,e):
+                        self.type = self.setting["type"]
+                        val = e.control.value
+                        if self.type == "bool":
+                            val = str(bool(val)).lower()
+                        elif self.type =="int":
+                            val = int(val)
+                        elif self.type == "float":
+                            val = float(val)
+                        elif self.type == "str":
+                            val = self.setting["convert"](val)
+                        _xml.find(".").attrib[self.attr] = str(val)
+                        SaveXmlSetting(_path,_xml)
                 dlcs = [self.xml.find(".").attrib[i]=="true" for i in AVAILABLE_DLCS]
                 controls=[
                     ft.ResponsiveRow([
                         ft.Column(col=2),
                         ft.Column([
                             ft.TextField(self.prof["name"],label="Name",on_blur=lambda e: (
-                                self.prof.__setitem__("name",e.control.value),update_data(),
-                                self.xml.find(".").attrib.__setitem__("name",e.control.value),
-                                SaveXmlSetting(self.prof["path"],self.xml)
+                                    open_dialog("Already exists",self.page),
+                                    e.control.__setattr__("value",self.prof["name"])
+                                    if e.control.value in [i["name"] for i in issessionactive(self.page)["profiles"]] 
+                                    else(
+                                    self.prof.__setitem__("name",e.control.value),update_data(),
+                                    self.xml.find(".").attrib.__setitem__("name",e.control.value),
+                                    SaveXmlSetting(self.prof["path"],self.xml)
+                                )
                             )),
                             ft.TextField(self.prof["description"],label="Description",multiline=True,on_blur=lambda e: (
                                 self.prof.__setitem__("description",e.control.value),update_data()
@@ -391,6 +522,13 @@ class console_view(ft.View):
                                             selected_color=ft.colors.GREEN,on_select=lambda e:dlc_select(e,AVAILABLE_DLCS[1])),
                                     ft.Chip(ft.Text("Space DLC"),bgcolor=ft.colors.BLUE_300,autofocus=True,selected=dlcs[2],
                                             selected_color=ft.colors.BLUE,on_select=lambda e:dlc_select(e,AVAILABLE_DLCS[2])),
+                                    ft.PopupMenuButton(
+                                        icon=ft.icons.EDIT_DOCUMENT,
+                                        items=[
+                                            ft.PopupMenuItem(text="Advanced Settings"+" "*100)
+                                        ]+[
+                                            ft.PopupMenuItem(content=SettingListTile(i)) for i in AVAILABLE_SETTINGS
+                                    ])
                                 ]
                             ),
                             ft.ResponsiveRow([
@@ -409,8 +547,11 @@ class console_view(ft.View):
                             ]),
                             ft.Column([
                                 ft.Row([ft.Text("Missions"),ft.PopupMenuButton(items=[
-                                    ft.PopupMenuItem(text="Enter mission path               "),
-                                    val := AddUser("Mission",AddMission,CheckOption="mission"),      
+                                    ft.PopupMenuItem(text="Select mission                                            "),
+                                    ft.PopupMenuItem(content=ft.Dropdown(
+                                        options=[ft.dropdown.Option(mission) for mission in MISSIONS],
+                                        on_change=AddMission
+                                    ))
                                 ],icon=ft.icons.ADD,icon_color=ft.colors.GREEN_ACCENT),
                                     ft.IconButton(ft.icons.ARTICLE)],spacing=0),
                             ]+[
@@ -439,7 +580,7 @@ class console_view(ft.View):
             if iserror:
                 open_dialog("Profile not found",self.page)
             container.controls.clear()
-            container.controls.append(profile_console(prof))
+            container.controls.append(profile_editor(prof))
             container.update()
         select.on_change = open_profile
 
@@ -467,14 +608,66 @@ class profile_view(ft.View):
                 ft.Text(f"Name: {name}"),
             ])
             
+class NotFoundView(ft.View):
+    def __init__(self) -> None:
+        super().__init__(route="/404")
+        self.appbar = header.header()
+        self.controls = [
+            ft.ResponsiveRow([
+                ft.Row(col=3),
+                ft.Row([
+                    ft.Column([
+                        ft.Text("Not Found",size=50),
+                    ])
+                ],col=6)
+            ])
+        ]
+
+class ConsoleView(ft.View):
+    def __init__(self,user,profile,page=None) -> None:
+        self.prof = [i for i in data["users"][user]["profiles"] if i["name"] == profile][0]
+        self.is_session_active = issessionactive(page) !=False
+        self.is_owner = self.is_session_active and user == page.client_storage.get("name")
+        if "allow_others" not in self.prof:
+            self.prof["allow_others"] = False
+            update_data()
+        self.is_available = self.is_owner or self.prof["allow_others"]
+        if not self.is_available:
+            page.go("/404")
+            return
+
+        super().__init__(route="/console")
+        self.appbar = header.header()
+        self.controls = [
+            ft.ResponsiveRow([
+                ft.Row(col=3),
+                ft.Row([
+                    ft.Column([
+                        ft.Text("Console",size=50),
+                        ft.Row([
+                            ft.Chip(label=ft.Text("Allow others"),visible=self.is_owner,selected=self.prof["allow_others"],
+                                    selected_color=ft.colors.GREEN,on_select=lambda e:(
+                                self.prof.__setitem__("allow_others",e.control.selected),update_data()
+                            )),
+                            ft.Chip(label=ft.Text("Run server"),visible=self.is_available,on_click=lambda e:(
+                                tap := manager.run_server(manager.generate_server_dict(self.prof)),
+                                open_dialog("Server started",page)if tap[0] else open_dialog("Failed to start server",page)
+                            ))
+                        ])
+                    ])
+                ],col=6)
+            ])
+        ]
 
 class worker():
     def __init__(self,worker_addr:str,max_servers:int=5) -> None:
         self.worker_addr = worker_addr
-        self.servers = []
-        self.max_servers = max_servers
+        self.servers = {}
+        self.max_servers = self.get_server_info()["max_servers"]
     def run_server(self,server_dict:dict):
-        xml = server_dict["xml"]#xml string
+        xml_path = server_dict["xml_path"]#xml path
+        with open(xml_path,"r") as f:
+            xml = f.read()
         name = server_dict["name"]
         send_dict = {
             "name":name,
@@ -482,7 +675,7 @@ class worker():
         }
         res = requests.post(f"http://{self.worker_addr}/run",json=json.dumps(send_dict))
         if res.status_code == 200:
-            self.servers.append(res.json()["server_id"])
+            self.servers[res.json()["server_id"]] = {"xml_path":xml_path,"name":name}
             return True ,res.json()["server_id"]
         else:
             return False,str(res.status_code)
@@ -493,6 +686,8 @@ class worker():
         res = requests.post(f"http://{self.worker_addr}/stop",json=json.dumps(send_dict))
         if res.status_code == 200:
             self.servers.remove(server_id)
+            dic = res.json()
+            xml = dic["xml"]
             return True,res.json()["server_id"]
         else:
             return False,str(res.status_code)
@@ -508,6 +703,44 @@ class worker():
     def shutdown(self):
         for server_id in self.servers:
             self.stop_server(server_id)
+
+class ServerManager():
+    def __init__(self,worker_addr:list[str]) -> None:
+        self.workers:list[worker] = []
+        for addr in worker_addr:
+            self.workers.append(worker(worker_addr=addr))
+    def generate_server_dict(self,user:str,profile_dict:dict):
+        profile_name = profile_dict["name"]
+        profile_uuid = profile_dict["path"][:-4]
+        return {
+            "name":f"{user}/{profile_name}",
+            "xml_path":f"saves/{profile_uuid}.xml"
+        }
+    def generate_internal_profile_name(self,user:str,profile_name:str):
+        return f"{user}/{profile_name}"
+    def run_server(self,server_dict:dict):
+        worker_availabilities = sorted(self.workers,key=lambda x:x.get_percentage_used())
+        success,server_id = worker_availabilities[0].run_server(server_dict)
+        if success:
+            server_dict["worker"] = worker_availabilities[0]
+            running_servers[server_id] = server_dict
+            return True,server_id
+        else:
+            return False,server_id
+    def stop_server(self,server_id:str):
+        if server_id  not in running_servers:
+            return False,"server not found"
+        else:
+            terget_worker:worker = running_servers[server_id]["worker"]
+            success,error = terget_worker.stop_server(server_id)
+            if success:
+                running_servers.remove(server_id)
+                return True,server_id
+            else:
+                return False,error
+    def get_server_infoes(self)->list:
+        return [i.get_server_info() for i in self.workers]
+
 def main(page: ft.Page):
 
     def route_change(handler: ft_core_page.RouteChangeEvent):
@@ -516,18 +749,25 @@ def main(page: ft.Page):
         if route.match("/"):
             page.views.append(main_view())
             page.update()
-            page.go("/console")
+            page.go("/editor")
         elif route.match("/login"):
             page.views.append(login_view())
         elif route.match("/register"):
             page.views.append(register_view())
-        elif route.match("/console"):
-            page.views.append(console_view())
+        elif route.match("/editor"):
+            page.views.append(p:=editor_view(page))
+            page.update()
+            p.selector_set(None)
         elif route.match("/account"):
             page.views.append(profile_view())
+        elif route.match("/console/:name/:profile_name"):
+            page.views.append(ConsoleView(route.name,route.profile_name,page))
+        else:
+            page.views.append(NotFoundView())
         page.update()
     page.on_route_change = route_change
     page.go("/")
     page.update()
-
-ft.app(target=main,assets_dir="images",port=8000,view=ft.WEB_BROWSER)
+if __name__ == "__main__":
+    manager = ServerManager(worker_addr=[])
+    ft.app(target=main,assets_dir="images",port=8000,view=ft.WEB_BROWSER)

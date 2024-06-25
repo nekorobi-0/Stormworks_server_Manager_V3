@@ -1,0 +1,8 @@
+<server_data port="25568" name="NEW_PROFILE" seed="1" save_name="server_data" max_players="32" password="PASSWORD" day_night_length="60" sunrise="0.25" sunset="0.791" infinite_money="false" infinite_resources="false" unlock_all_islands="false" settings_menu="false" base_island="data/tiles/island12.xml" settings_menu_lock="false" infinite_batteries="false" infinite_fuel="false" engine_overheating="false" ceasefire="false" infinite_ammo="false" no_clip="false" map_teleport="false" vehicle_spawn="false" photo_mode="false" respawning="false" cleanup_vehicle="false" clear_fow="false" third_person="false" third_person_vehicle="false" vehicle_damage="false" player_damage="false" npc_damage="false" aggressive_animals="false" sea_monsters="false" lightning="false" teleport_vehicle="false" fast_travel="false" starting_currency="20000" despawn_on_leave="false" map_show_players="false" map_show_vehicles="false" show_3d_waypoints="false" show_name_plates="false" override_weather="false" override_time="false" override_wind="false" physics_timestep="180" wildlife_enabled="false" fish_spawn_rate="2" unlock_components="false" dlc_weapons="false" dlc_arid="false" dlc_space="false">
+    <admins/>
+    <authorized/>
+    <blacklist/>
+    <whitelist/>
+    <playlists/>
+    
+</server_data>
