@@ -45,7 +45,8 @@ async def run(reqest: Server_RUN):
     with open(f"saves/{server_id}/server_config.xml","w") as f:
         f.write(xml)
     path = server_id
-    server = subprocess.Popen(["wine","stw/server64.exe","+server_dir",f"saves/{path}"])
+    server = subprocess.Popen(["wine","server64.exe","+server_dir",f"saves/{path}"],
+                              cwd=r"./../../stw")
     servers_status[position] = "running"
     servers[server_id]["server"] = server
     servers[server_id]["position"] = position
