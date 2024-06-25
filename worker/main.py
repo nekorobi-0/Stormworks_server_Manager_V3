@@ -48,9 +48,10 @@ async def run(data: run_request):
     with open(f"./../../stw/saves/{position}/server_config.xml","w") as f:
         f.write(xml)
     path = server_id
-    server = subprocess.Popen(["wine","server64.exe","+server_dir",f"saves/{path}"],
+    server = subprocess.Popen(["wine","server64.exe","+server_dir",f"saves/{position}"],
                               cwd=r"./../../stw")
     servers_status[position] = "running"
+    servers[server_id] = {}
     servers[server_id]["server"] = server
     servers[server_id]["position"] = position
     return fastapi.responses.JSONResponse(content={"server_id":server_id})
