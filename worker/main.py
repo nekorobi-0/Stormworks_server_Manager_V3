@@ -60,7 +60,7 @@ async def stop(server_id: str):
 
 @app.post("/info")
 async def info():
-    CPU_stats = psutil.cpu_stats(percpu=True)
+    CPU_stats = psutil.cpu_percent(percpu=True)
     RAM_stats = psutil.virtual_memory()
     res_dict = {
         "servers": servers.keys(),
