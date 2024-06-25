@@ -30,8 +30,6 @@ def server_selecter():
 class Server_RUN(BaseModel):
     name: str
     xml: str
-class Server_MANAGE(BaseModel):
-    server_id: str
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -54,8 +52,7 @@ async def run(reqest: Server_RUN):
     return fastapi.responses.JSONResponse(content={"server_id":server_id})
 
 @app.post("/stop/{server_id}")
-async def stop(server_id: Server_MANAGE):
-    server_id = server_id.server_id
+async def stop(server_id: str):
     if server_id in servers:
         servers_status[servers[server_id]["position"]] = "stopped"
         servers[server_id].kill()
