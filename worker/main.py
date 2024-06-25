@@ -61,7 +61,7 @@ async def stop(data: stop_request):
     server_id = data.server_id
     if server_id in servers:
         servers_status[servers[server_id]["position"]] = "stopped"
-        servers[server_id].kill()
+        servers[server_id]["server"].kill()
 
 @app.post("/info")
 async def info():
