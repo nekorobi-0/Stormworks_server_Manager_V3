@@ -58,7 +58,7 @@ async def stop(server_id: str):
         servers_status[servers[server_id]["position"]] = "stopped"
         servers[server_id].kill()
 
-@app.get("/info")
+@app.post("/info")
 async def info():
     CPU_stats = psutil.cpu_stats(percpu=True)
     RAM_stats = psutil.virtual_memory()

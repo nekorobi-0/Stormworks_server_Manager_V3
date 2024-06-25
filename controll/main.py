@@ -769,5 +769,5 @@ def main(page: ft.Page):
     page.go("/")
     page.update()
 if __name__ == "__main__":
-    manager = ServerManager(worker_addr=[])
+    manager = ServerManager(worker_addr=["192.168.0.130:8080"])
     ft.app(target=main,assets_dir="images",port=8000,view=ft.WEB_BROWSER)
