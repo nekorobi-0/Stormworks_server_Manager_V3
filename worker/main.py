@@ -22,9 +22,9 @@ servers_status = ["stopped"]*MAX_SERVER_COUNT
 app = fastapi.FastAPI()
 servers = {}
 def server_selecter():
-    for i in servers_status:
-        if i == "stopped":
-            return servers_status.index(i),i*2+GAME_PORT_START
+    for i,status in enumerate(servers_status):
+        if status == "stopped":
+            return i,i*2+GAME_PORT_START
     else:
         return -1,0
 

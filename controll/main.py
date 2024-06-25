@@ -675,7 +675,7 @@ class worker():
         }
         print(send_dict)
         print(json.dumps(send_dict))
-        res = requests.post(f"http://{self.worker_addr}/run",json=json.dumps(send_dict))
+        res = requests.post(f"http://{self.worker_addr}/run",data=json.dumps(send_dict),headers={"Content-Type":"application/json"})
         print(res.json())
         if res.status_code == 200:
             self.servers[res.json()["server_id"]] = {"xml_path":xml_path,"name":name}
