@@ -45,7 +45,7 @@ async def run(data: run_request):
         return fastapi.responses.JSONResponse(content={"error":"server full"},status_code=400)
     xml = re.sub("port=\"[0-9]+\"",f"port=\"{port}\"",xml)
     server_id = str(uuid.uuid4())
-    with open(f"saves/{position}/server_config.xml","w") as f:
+    with open(f"./../../stw/saves/{position}/server_config.xml","w") as f:
         f.write(xml)
     path = server_id
     server = subprocess.Popen(["wine","server64.exe","+server_dir",f"saves/{path}"],
