@@ -725,7 +725,7 @@ class ServerManager():
     def generate_internal_profile_name(self,user:str,profile_name:str):
         return f"{user}/{profile_name}"
     def run_server(self,server_dict:dict):
-        if server_dict["name"] in [i["name"] for i in running_servers]:
+        if server_dict["name"] in [running_servers[i]["name"] for i in running_servers]:
             return False,"server already running"
         worker_availabilities = sorted(self.workers,key=lambda x:x.get_percentage_used())
         success,server_id = worker_availabilities[0].run_server(server_dict)
