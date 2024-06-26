@@ -640,8 +640,9 @@ class ConsoleView(ft.View):
         self.appbar = header.header()
         self.server_running = manager.check_server_is_running(manager.generate_internal_profile_name(user,self.prof["name"]))
         def generate_status():
+            self.server_running = manager.check_server_is_running(manager.generate_internal_profile_name(user,self.prof["name"]))
             return ft.Chip(ft.Text("server is running"if self.server_running else "server is not running"),visible=self.is_available,
-                        disabled_color=ft.colors.GREEN_ACCENT if self.server_running else ft.colors.RED_ACCENT)
+                        disabled_color=ft.colors.GREEN_ACCENT if self.server_running else ft.colors.RED_ACCENT,show_checkmark=False)
         self.controls = [
             ft.ResponsiveRow([
                 ft.Row(col=3),
@@ -674,6 +675,13 @@ class worker():
         self.worker_addr = worker_addr
         self.servers = {}
         self.info = self.get_server_info()
+        for i in self.info["servers"]:
+            print(i)
+            user,server_name = i["name"].split("/")
+            if type(server_name) != str:
+                server_name = "".join(server_name)
+            xml_path = data["users"][user]["profiles"][server_name]["xml_path"]
+            self.servers[i["server_id"]] = {"xml_path":xml_path,"name":i["name"]}
         self.max_servers = self.info["max_servers"]
     def run_server(self,server_dict:dict):
         xml_path = server_dict["xml_path"]#xml path
@@ -684,8 +692,6 @@ class worker():
             "name":str(name),
             "xml":str(xml)
         }
-        print(send_dict)
-        print(json.dumps(send_dict))
         res = requests.post(f"http://{self.worker_addr}/run",data=json.dumps(send_dict),headers={"Content-Type":"application/json"})
         print(res.json())
         if res.status_code == 200:
@@ -723,6 +729,8 @@ class ServerManager():
         self.workers:list[worker] = []
         for addr in worker_addr:
             w = worker(worker_addr=addr)
+            for i in w.servers:
+                running_servers[i] = w.servers[i]
             self.workers.append(w)
     def generate_server_dict(self,user:str,profile_dict:dict):
         profile_name = profile_dict["name"]
