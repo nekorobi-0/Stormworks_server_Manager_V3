@@ -694,7 +694,7 @@ class worker():
             self.servers.pop(server_id)
             dic = res.json()
             xml = dic["xml"]
-            return True,res.json()["server_id"]
+            return True,dic["server_id"]
         else:
             return False,str(res.status_code)
     def get_server_info(self)->dict:
