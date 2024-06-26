@@ -77,7 +77,7 @@ async def info(data: stop_request):
         },
         "max_servers": MAX_SERVER_COUNT
     }
-    return res_dict
+    return fastapi.responses.JSONResponse(content=res_dict) #res_dict
 
 if __name__ == "__main__":
     uvicorn.run(app, host=HOST, port=CONTROLL_PORT)
