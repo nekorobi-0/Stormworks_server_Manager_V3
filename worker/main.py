@@ -77,7 +77,7 @@ async def info(data: stop_request):
     CPU_stats = psutil.cpu_percent(percpu=True)
     RAM_stats = psutil.virtual_memory()
     res_dict = {
-        "servers": list({i:servers[i]["name"] for i in servers.keys()}),
+        "servers": {i:servers[i]["name"] for i in servers.keys()},
         "CPU": CPU_stats,
         "RAM":{
             "total": RAM_stats.total,
