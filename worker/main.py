@@ -60,12 +60,14 @@ async def run(data: run_request):
 async def stop(data: stop_request):
     server_id = data.server_id
     if server_id in servers:
+        with open(f"./../../stw/saves/{servers[server_id]['position']}/server_config.xml","r") as f:
+            xml = f.read()
         servers_status[servers[server_id]["position"]] = "stopped"
         servers[server_id]["server"].kill()
         servers.pop(server_id)
-        with open(f"./../../stw/saves/{servers[server_id]['position']}/server_config.xml","r") as f:
-            xml = f.read()
-    return fastapi.responses.JSONResponse(content={"xml":xml,"server_id":server_id})
+        return fastapi.responses.JSONResponse(content={"xml":xml,"server_id":server_id})
+    else:
+        return fastapi.responses.JSONResponse(content={"error":"server not found"},status_code=400)
 
 @app.post("/info")
 async def info(data: stop_request):
