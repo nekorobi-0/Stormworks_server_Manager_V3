@@ -689,9 +689,9 @@ class worker():
         send_dict = {
             "server_id":server_id
         }
-        res = requests.post(f"http://{self.worker_addr}/stop",json=json.dumps(send_dict))
+        res = requests.post(f"http://{self.worker_addr}/stop",data=json.dumps(send_dict),headers={"Content-Type":"application/json"})
         if res.status_code == 200:
-            self.servers.remove(server_id)
+            self.servers.pop(server_id)
             dic = res.json()
             xml = dic["xml"]
             return True,res.json()["server_id"]
@@ -699,7 +699,7 @@ class worker():
             return False,str(res.status_code)
     def get_server_info(self)->dict:
         send_dict = {"server_id":"abcdef"}
-        res = requests.get(f"http://{self.worker_addr}/info",json=json.dumps(send_dict))
+        res = requests.post(f"http://{self.worker_addr}/info",data=json.dumps(send_dict),headers={"Content-Type":"application/json"})
         if res.status_code == 200:
             return res.json()
         else:
@@ -747,8 +747,8 @@ class ServerManager():
             else:
                 return False,error
     def get_server_id(self,name:str):
-        print([running_servers[i] for i in running_servers if i["name"] == name][0])
-        return [running_servers[i] for i in running_servers if i["name"] == name][0]["server_id"]
+
+        return [i for i in running_servers if running_servers[i]["name"] == name][0]
     def get_server_infoes(self)->list:
         return [i.get_server_info() for i in self.workers]
 
