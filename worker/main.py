@@ -62,6 +62,9 @@ async def stop(data: stop_request):
     if server_id in servers:
         servers_status[servers[server_id]["position"]] = "stopped"
         servers[server_id]["server"].kill()
+        with open(f"./../../stw/saves/{servers[server_id]['position']}/server_config.xml","r") as f:
+            xml = f.read()
+    return fastapi.responses.JSONResponse(content={"xml":xml})
 
 @app.post("/info")
 async def info(data: stop_request):
