@@ -700,6 +700,7 @@ class worker():
     def get_server_info(self)->dict:
         send_dict = {"server_id":"abcdef"}
         res = requests.post(f"http://{self.worker_addr}/info",json=json.dumps(send_dict))
+        print(res.json())
         if res.status_code == 200:
             return res.json()
         else:
