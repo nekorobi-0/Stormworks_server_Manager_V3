@@ -652,6 +652,9 @@ class ConsoleView(ft.View):
                             ft.Chip(label=ft.Text("Run server"),visible=self.is_available,on_click=lambda e:(
                                 tap := manager.run_server(manager.generate_server_dict(user,self.prof)),
                                 open_dialog("Server started",page)if tap[0] else open_dialog("Failed to start server",page)
+                            )),
+                            ft.Chip(label=ft.Text("Stop server"),visible=self.is_available,on_click=lambda e:(
+                                manager.stop_server(manager.get_server_id(manager.generate_internal_profile_name(user,self.prof["name"]))),
                             ))
                         ])
                     ])
@@ -695,7 +698,7 @@ class worker():
         else:
             return False,str(res.status_code)
     def get_server_info(self)->dict:
-        send_dict = {}
+        send_dict = {"server_id":"abcdef"}
         res = requests.post(f"http://{self.worker_addr}/info",json=json.dumps(send_dict))
         if res.status_code == 200:
             return res.json()
@@ -722,6 +725,8 @@ class ServerManager():
     def generate_internal_profile_name(self,user:str,profile_name:str):
         return f"{user}/{profile_name}"
     def run_server(self,server_dict:dict):
+        if server_dict["name"] in [i["name"] for i in running_servers]:
+            return False,"server already running"
         worker_availabilities = sorted(self.workers,key=lambda x:x.get_percentage_used())
         success,server_id = worker_availabilities[0].run_server(server_dict)
         if success:
@@ -741,6 +746,9 @@ class ServerManager():
                 return True,server_id
             else:
                 return False,error
+    def get_server_id(self,name:str):
+        print(running_servers)
+        return [running_servers[i] for i in running_servers if i["name"] == name][0]["server_id"]
     def get_server_infoes(self)->list:
         return [i.get_server_info() for i in self.workers]
 

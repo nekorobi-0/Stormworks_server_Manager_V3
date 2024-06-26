@@ -33,6 +33,8 @@ class run_request(BaseModel):
     xml:str
 class stop_request(BaseModel):
     server_id:str
+class info_request(BaseModel):
+    server_id:str
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
@@ -64,7 +66,7 @@ async def stop(data: stop_request):
         servers[server_id]["server"].kill()
 
 @app.post("/info")
-async def info():
+async def info(data: info_request):
     CPU_stats = psutil.cpu_percent(percpu=True)
     RAM_stats = psutil.virtual_memory()
     res_dict = {
