@@ -40,6 +40,7 @@ async def root():
 @app.post("/run")
 async def run(data: run_request):
     xml = data.xml
+    name = data.name
     position,port = server_selecter()
     if position == -1:
         return fastapi.responses.JSONResponse(content={"error":"server full"},status_code=400)
@@ -52,6 +53,7 @@ async def run(data: run_request):
                               cwd=r"./../../stw")
     servers_status[position] = "running"
     servers[server_id] = {}
+    servers[server_id]["name"] = name
     servers[server_id]["server"] = server
     servers[server_id]["position"] = position
     return fastapi.responses.JSONResponse(content={"server_id":server_id})
@@ -75,7 +77,7 @@ async def info(data: stop_request):
     CPU_stats = psutil.cpu_percent(percpu=True)
     RAM_stats = psutil.virtual_memory()
     res_dict = {
-        "servers": list(servers.keys()),
+        "servers": list({i:servers[i]["name"] for i in servers.keys()}),
         "CPU": CPU_stats,
         "RAM":{
             "total": RAM_stats.total,

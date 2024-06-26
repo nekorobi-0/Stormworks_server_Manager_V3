@@ -638,6 +638,10 @@ class ConsoleView(ft.View):
 
         super().__init__(route="/console")
         self.appbar = header.header()
+        self.server_running = manager.check_server_is_running(manager.generate_internal_profile_name(user,self.prof["name"]))
+        def generate_status():
+            return ft.Chip(ft.Text("server is running"if self.server_running else "server is not running"),visible=self.is_available,
+                        disabled_color=ft.colors.GREEN_ACCENT if self.server_running else ft.colors.RED_ACCENT)
         self.controls = [
             ft.ResponsiveRow([
                 ft.Row(col=3),
@@ -651,12 +655,15 @@ class ConsoleView(ft.View):
                             )),
                             ft.Chip(label=ft.Text("Run server"),visible=self.is_available,on_click=lambda e:(
                                 tap := manager.run_server(manager.generate_server_dict(user,self.prof)),
-                                open_dialog("Server started",page)if tap[0] else open_dialog("Failed to start server",page)
+                                open_dialog("Server started",page)if tap[0] else open_dialog("Failed to start server",page),
+                                c.__setattr__("content",generate_status()),c.update()
                             )),
                             ft.Chip(label=ft.Text("Stop server"),visible=self.is_available,on_click=lambda e:(
                                 manager.stop_server(manager.get_server_id(manager.generate_internal_profile_name(user,self.prof["name"]))),
+                                c.__setattr__("content",generate_status()),c.update()
                             ))
-                        ])
+                        ]),
+                        c:=ft.Container(generate_status())
                     ])
                 ],col=6)
             ])
@@ -666,7 +673,8 @@ class worker():
     def __init__(self,worker_addr:str,max_servers:int=5) -> None:
         self.worker_addr = worker_addr
         self.servers = {}
-        self.max_servers = self.get_server_info()["max_servers"]
+        self.info = self.get_server_info()
+        self.max_servers = self.info["max_servers"]
     def run_server(self,server_dict:dict):
         xml_path = server_dict["xml_path"]#xml path
         with open(xml_path,"r") as f:
@@ -714,7 +722,8 @@ class ServerManager():
     def __init__(self,worker_addr:list[str]) -> None:
         self.workers:list[worker] = []
         for addr in worker_addr:
-            self.workers.append(worker(worker_addr=addr))
+            w = worker(worker_addr=addr)
+            self.workers.append(w)
     def generate_server_dict(self,user:str,profile_dict:dict):
         profile_name = profile_dict["name"]
         profile_uuid = profile_dict["path"][:-4]
@@ -725,7 +734,7 @@ class ServerManager():
     def generate_internal_profile_name(self,user:str,profile_name:str):
         return f"{user}/{profile_name}"
     def run_server(self,server_dict:dict):
-        if server_dict["name"] in [running_servers[i]["name"] for i in running_servers]:
+        if self.check_server_is_running(server_dict["name"]):
             print("server already running")
             return False,"server already running"
         worker_availabilities = sorted(self.workers,key=lambda x:x.get_percentage_used())
@@ -736,6 +745,11 @@ class ServerManager():
             return True,server_id
         else:
             return False,server_id
+    def check_server_is_running(self,server_name:str):
+        if server_name in [running_servers[i]["name"] for i in running_servers]:
+            return True
+        else:
+            return False
     def stop_server(self,server_id:str):
         if server_id  not in running_servers:
             return False,"server not found"
@@ -743,13 +757,14 @@ class ServerManager():
             terget_worker:worker = running_servers[server_id]["worker"]
             success,error = terget_worker.stop_server(server_id)
             if success:
-                running_servers.remove(server_id)
+                running_servers.pop(server_id)
                 return True,server_id
             else:
                 return False,error
     def get_server_id(self,name:str):
-
-        return [i for i in running_servers if running_servers[i]["name"] == name][0]
+        if len(l:=[i for i in running_servers if running_servers[i]["name"] == name]) ==0:
+            return None
+        return l[0]
     def get_server_infoes(self)->list:
         return [i.get_server_info() for i in self.workers]
 
