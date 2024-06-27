@@ -514,7 +514,7 @@ class editor_view(ft.View):
                                     self.prof.__setitem__("name",e.control.value),update_data(),
                                     self.xml.find(".").attrib.__setitem__("name",e.control.value),
                                     SaveXmlSetting(self.prof["path"],self.xml),
-                                    self.sel_set(None)
+                                    self.sel_set(None,terget=e.control.value)
                                 )
                             )),
                             ft.TextField(self.prof["description"],label="Description",multiline=True,on_blur=lambda e: (
