@@ -37,6 +37,11 @@ MISSIONS = [
     "default_mission_zones_sawyer",
     "default_tutorial",
     "default_mission_zones_underwater",
+    #default end
+    "addon_toolsv3",
+    "Autoauth",
+    "Meter_wiget",
+    "TargetDrones"
 ]
 
 PROFILE_TEMPLATES = {
