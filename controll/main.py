@@ -815,6 +815,8 @@ def main(page: ft.Page):
             page.views.append(NotFoundView(page))
         page.update()
     page.on_route_change = route_change
+    print(page.url)
+    page.go("/")
     page.update()
 if __name__ == "__main__":
     manager = ServerManager(worker_addr=["192.168.0.130:8080"])
