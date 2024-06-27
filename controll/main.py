@@ -368,8 +368,10 @@ class editor_view(ft.View):
                     open_dialog("Profile created",self.page)
         add_profile.on_change = create_profile
         del_btn.on_click = remove_profile
+        sel_set = self.selector_set
         class profile_editor(ft.Column):
             def __init__(self,prof):
+                self.sel_set = sel_set
                 self.prof = prof
                 super().__init__(self.generate_controls())
                 self.scroll = ft.ScrollMode.AUTO
@@ -510,7 +512,8 @@ class editor_view(ft.View):
                                     else(
                                     self.prof.__setitem__("name",e.control.value),update_data(),
                                     self.xml.find(".").attrib.__setitem__("name",e.control.value),
-                                    SaveXmlSetting(self.prof["path"],self.xml)
+                                    SaveXmlSetting(self.prof["path"],self.xml),
+                                    self.sel_set(None)
                                 )
                             )),
                             ft.TextField(self.prof["description"],label="Description",multiline=True,on_blur=lambda e: (
