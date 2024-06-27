@@ -794,10 +794,7 @@ def main(page: ft.Page):
     def route_change(handler: ft_core_page.RouteChangeEvent):
         route = ft.TemplateRoute(handler.route)
         page.views.clear()
-        if route.match("/"):
-            page.views.append(main_view(page))
-            page.update()
-            page.go("/editor")
+        if False:pass
         elif route.match("/login"):
             page.views.append(login_view(page))
         elif route.match("/register"):
@@ -810,6 +807,10 @@ def main(page: ft.Page):
             page.views.append(profile_view(page))
         elif route.match("/console/:name/:profile_name"):
             page.views.append(ConsoleView(route.name,route.profile_name,page))
+        elif route.match("/"):
+            page.views.append(main_view(page))
+            page.update()
+            page.go("/editor")
         else:
             page.views.append(NotFoundView(page))
         page.update()
