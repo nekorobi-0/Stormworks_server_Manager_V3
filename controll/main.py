@@ -506,9 +506,8 @@ class editor_view(ft.View):
                         ft.Column(col=2),
                         ft.Column([
                             ft.TextField(self.prof["name"],label="Name",on_blur=lambda e: (
-                                    print(e.control.value,self.prof["name"],e.control.value == self.prof["name"]),
-                                    open_dialog("Already exists",self.page),
-                                    e.control.__setattr__("value",self.prof["name"])
+                                    (open_dialog("Already exists",self.page),
+                                    e.control.__setattr__("value",self.prof["name"]))
                                     if e.control.value in [i["name"] for i in issessionactive(self.page)["profiles"]]
                                       and self.prof["name"] != e.control.value 
                                     else(
