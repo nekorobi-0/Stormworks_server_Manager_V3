@@ -508,7 +508,8 @@ class editor_view(ft.View):
                             ft.TextField(self.prof["name"],label="Name",on_blur=lambda e: (
                                     open_dialog("Already exists",self.page),
                                     e.control.__setattr__("value",self.prof["name"])
-                                    if e.control.value in [i["name"] for i in issessionactive(self.page)["profiles"]] 
+                                    if e.control.value in [i["name"] for i in issessionactive(self.page)["profiles"]]
+                                      and self.prof["name"] != e.control.value 
                                     else(
                                     self.prof.__setitem__("name",e.control.value),update_data(),
                                     self.xml.find(".").attrib.__setitem__("name",e.control.value),
