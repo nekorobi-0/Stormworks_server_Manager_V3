@@ -660,7 +660,7 @@ class ConsoleView(ft.View):
                     ft.Column([
                         ft.Text("Console",size=50),
                         ft.Row([
-                            ft.Chip(label=ft.Text("Allow others"),visible=self.is_owner,selected=self.prof["allow_others"],
+                            ft.Chip(label=ft.Text("Allow others to run and stop server"),visible=self.is_owner,selected=self.prof["allow_others"],
                                     selected_color=ft.colors.GREEN,on_select=lambda e:(
                                 self.prof.__setitem__("allow_others",e.control.selected),update_data()
                             )),
