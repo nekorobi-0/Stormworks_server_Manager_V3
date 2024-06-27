@@ -177,14 +177,15 @@ def open_dialog(error_msg,page):
 def register_func(e):
     e.page.go("/register")
 class main_view(ft.View):
-    def __init__(self):
+    def __init__(self,page):
         super().__init__(route="/")
         self.appbar = header.header()
         self.controls.append(ft.Text("Hello World"))
 class login_view(ft.View):
-    def __init__(self):
+    def __init__(self,page):
         super().__init__(route="/login")
-        self.appbar = header.header()
+        self.page = page
+        self.appbar = header.header(issessionactive(self.page)!=False)
         container = ft.ResponsiveRow([
             ft.Column(col=4),
             ft.Column(
@@ -223,9 +224,10 @@ class login_view(ft.View):
         self.controls.append(container)
 
 class register_view(ft.View):
-    def __init__(self):
+    def __init__(self,page):
         super().__init__(route="/register")
-        self.appbar = header.header()
+        self.page = page
+        self.appbar = header.header(issessionactive(self.page)!=False)
         container = ft.ResponsiveRow([
             ft.Column(col=4),
             ft.Column(
@@ -288,8 +290,8 @@ class editor_view(ft.View):
     def __init__(self,page):
         super().__init__(route="/editor")
         self.scroll = ft.ScrollMode.AUTO
-        self.appbar = header.header()
         self.page = page
+        self.appbar = header.header(issessionactive(self.page)!=False)
         self.controls.append(ft.ResponsiveRow(
             controls=[
                 ft.Column(col=2),
@@ -585,9 +587,10 @@ class editor_view(ft.View):
         select.on_change = open_profile
 
 class profile_view(ft.View):
-    def __init__(self) -> None:
+    def __init__(self,page) -> None:
         super().__init__(route="/account")
-        self.appbar = header.header()
+        self.page = page
+        self.appbar = header.header(issessionactive(self.page)!=False)
         self.controls = [
             ft.ResponsiveRow([
                 ft.Row(col=3),
@@ -609,9 +612,10 @@ class profile_view(ft.View):
             ])
             
 class NotFoundView(ft.View):
-    def __init__(self) -> None:
+    def __init__(self,page) -> None:
         super().__init__(route="/404")
-        self.appbar = header.header()
+        self.page = page
+        self.appbar = header.header(issessionactive(self.page)!=False)
         self.controls = [
             ft.ResponsiveRow([
                 ft.Row(col=3),
@@ -637,7 +641,8 @@ class ConsoleView(ft.View):
             return
 
         super().__init__(route="/console")
-        self.appbar = header.header()
+        self.page = page
+        self.appbar = header.header(issessionactive(self.page)!=False)
         self.server_running = manager.check_server_is_running(manager.generate_internal_profile_name(user,self.prof["name"]))
         def generate_status():
             self.server_running = manager.check_server_is_running(manager.generate_internal_profile_name(user,self.prof["name"]))
@@ -676,12 +681,11 @@ class worker():
         self.servers = {}
         self.info = self.get_server_info()
         for i in self.info["servers"]:
-            print(i)
-            user,server_name = i["name"].split("/")
+            user,server_name = self.info["servers"][i].split("/")
             if type(server_name) != str:
                 server_name = "".join(server_name)
-            xml_path = data["users"][user]["profiles"][server_name]["xml_path"]
-            self.servers[i["server_id"]] = {"xml_path":xml_path,"name":i["name"]}
+            xml_path = [j["path"] for j in data["users"][user]["profiles"] if j["name"] == server_name][0]
+            self.servers[i] = {"xml_path":xml_path,"name":self.info["servers"][i],"worker":self}
         self.max_servers = self.info["max_servers"]
     def run_server(self,server_dict:dict):
         xml_path = server_dict["xml_path"]#xml path
@@ -693,7 +697,6 @@ class worker():
             "xml":str(xml)
         }
         res = requests.post(f"http://{self.worker_addr}/run",data=json.dumps(send_dict),headers={"Content-Type":"application/json"})
-        print(res.json())
         if res.status_code == 200:
             self.servers[res.json()["server_id"]] = {"xml_path":xml_path,"name":name}
             return True ,res.json()["server_id"]
@@ -754,6 +757,7 @@ class ServerManager():
         else:
             return False,server_id
     def check_server_is_running(self,server_name:str):
+        print([running_servers[i]["name"] for i in running_servers])
         if server_name in [running_servers[i]["name"] for i in running_servers]:
             return True
         else:
@@ -782,23 +786,23 @@ def main(page: ft.Page):
         route = ft.TemplateRoute(handler.route)
         page.views.clear()
         if route.match("/"):
-            page.views.append(main_view())
+            page.views.append(main_view(page))
             page.update()
             page.go("/editor")
         elif route.match("/login"):
-            page.views.append(login_view())
+            page.views.append(login_view(page))
         elif route.match("/register"):
-            page.views.append(register_view())
+            page.views.append(register_view(page))
         elif route.match("/editor"):
             page.views.append(p:=editor_view(page))
             page.update()
             p.selector_set(None)
         elif route.match("/account"):
-            page.views.append(profile_view())
+            page.views.append(profile_view(page))
         elif route.match("/console/:name/:profile_name"):
             page.views.append(ConsoleView(route.name,route.profile_name,page))
         else:
-            page.views.append(NotFoundView())
+            page.views.append(NotFoundView(page))
         page.update()
     page.on_route_change = route_change
     page.go("/")

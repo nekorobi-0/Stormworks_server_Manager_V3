@@ -1,6 +1,12 @@
 import flet as ft
 def login_func(e):
-    e.page.go("/login")
+    if e.control.text == "Login":
+        e.page.go("/login")
+    else:
+        print("logout")
+        e.page.client_storage.remove("session_id")
+        e.page.client_storage.remove("name")
+        e.page.go("/login")
 def header(isLogin=False):
     return ft.AppBar(
         leading=ft.IconButton(ft.icons.MENU,on_click=lambda e:e.page.go("/editor")),
